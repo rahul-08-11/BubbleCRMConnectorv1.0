@@ -1,4 +1,4 @@
-# BubbleZohoConnector-Minor Service Handling
+# BubbleZohoConnector-Major Service Handling
 
 This repository contains the source code for a microservice designed to integrate with a [Bubble](https://bubble.io/) application and interact with Zoho CRM. The microservice provides functionalities to handle vehicle Submission, Activation and Lead Generation.
 
