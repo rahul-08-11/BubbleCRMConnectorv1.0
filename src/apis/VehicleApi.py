@@ -53,6 +53,14 @@ def add_form_vehicle_into_crm(access_token, bubble_vehicle_payload, main_image_u
 
 
 def update_vehicle(access_token, data):
+    try:
+        ## if vehicle record ID is not passed, fetch it using Vin Match
+        if "id" not in data.keys():
+            vehicle_id = get_vehicle_id(access_token, data['data'][0]['Vin'], "VIN")
+            data['data'][0]['id'] = vehicle_id
+            print(vehicle_id)
+    except Exception as e:
+        print(e)
     url = f"https://www.zohoapis.ca/crm/v2/Vehicles"
     headers = {
         "Authorization": f"Zoho-oauthtoken {access_token}",
@@ -61,3 +69,34 @@ def update_vehicle(access_token, data):
 
     response = requests.patch(url, headers=headers, json=data)
     return response.json()
+
+
+def get_vehicle_id(access_token, unique_identifier, field_name):
+    """
+    Fetch the Vehicle ID based on a unique identifier (like VIN).
+    
+    """
+    # API endpoint
+    url = "https://www.zohoapis.ca/crm/v2/Vehicles/search"
+
+    params = {"criteria": f"{field_name}:equals:{unique_identifier}"}
+
+    # Authorization Header
+    headers = {
+        "Authorization": f"Zoho-oauthtoken {access_token}",
+    }
+
+    # Make GET request to fetch id
+    response = requests.get(url, params=params, headers=headers)
+
+    # Check if request was successful
+    if response.status_code == 200 or response.status_code == 201:
+        data = response.json()
+        if data.get("data"):
+            vehicle_id = data["data"][0]["id"]
+            return vehicle_id
+        else:
+            return None
+    else:
+        print(f"Error: {response.status_code} - {response.text}")
+        return None
