@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 from typing import Optional
-
 class Vehicle(BaseModel):
     Name: Optional[str] = None
     Make: str
@@ -36,7 +35,12 @@ class Vehicle(BaseModel):
     Vehicle_Image_Url: Optional[str] = None
     Carfax_URL: Optional[str] = None
     Seller_ID: Optional[str] = None
-
+    Seller_Name : Optional[str] = None
+    VehicleDescription : Optional[str] = None
+    VehicleCaptureType : Optional[str] = None
+    VehicleConditionScore : Optional[str] = None
+    Auction_URL : Optional[str] = None
+    Auction_Date : Optional[str] = None
 
 
 class ActivationVehicle(BaseModel):

@@ -1,6 +1,6 @@
 import string
 import hashlib
-
+from datetime import datetime
 
 def process_image_urls(image_url: str) -> list:
     try:
@@ -85,3 +85,14 @@ def generate_unique_id(text, other=""):
     unique_id = hash_object.hexdigest()
 
     return unique_id
+
+
+def format_datetime(date_str):
+    try:
+        # Parse the datetime string (assuming it might include milliseconds or timezone info)
+        dt = datetime.fromisoformat(date_str.replace('Z', '+00:00').split('.')[0])
+        # Convert it to the required format
+        return dt.strftime('%Y-%m-%d')
+    except ValueError:
+        # Handle the case where date_str is not in the expected format
+        return None

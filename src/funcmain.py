@@ -8,14 +8,13 @@ import json
 import asyncio
 
 
-
 global token_instance
 token_instance = TokenManager()
 
 async def process_leads(access_token,vehicle_id,vehicle_row,VIN,Buyer_name=None,sold_database=None,avg_purchase_price_df=None):
     try:
         ## update URL field with bubble app vehicle listing link 
-        url = f"https://testfigmaapr2.bubbleapps.io/version-test/vehicle_details/{vehicle_id}"
+        url = f"https://tradegeek.io/vehicle_details/{vehicle_id}"
 
         vehicle_url_data = {
         "data": [
@@ -81,9 +80,14 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
                 Options=body.get('Options',''),  # If Options is a list
                 Declarations=body.get('Declarations',''),
                 Source=body.get('Source',''),
-                Seller_ID=body.get('Seller_ID','')
+                Seller_ID=body.get('Seller_ID',''),
+                Seller_Name=body.get('SellerName',''),
+                VehicleDescription=body.get('VehicleDescription',''),
+                VehicleCaptureType=body.get('VehicleCaptureType',''),
+                VehicleConditionScore=body.get('VehicleConditionScore',''),
+                Auction_URL=body.get('Auction_URL',''),
+                Auction_Date=format_datetime(body.get('Auction_Date','')),
             )
-
             # Convert Vehicle instance to a dictionary
             bubble_vehicle = dict(vehicle)
             # Process the vehicle data further if needed
@@ -94,7 +98,6 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
             bubble_vehicle.update({
             "Carfax_URL": Carfax_url,
             "Image_Link": main_image_url,
-            "external_vehicle_id": generate_unique_id(bubble_vehicle.get('VIN')),
             "Status": "Available",
             "Exterior_colour": bubble_vehicle.get('Exterior_Color', ''),
         })
