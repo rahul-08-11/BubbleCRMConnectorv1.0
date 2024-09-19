@@ -212,3 +212,28 @@ async def update_vehicle(req : func.HttpRequest):
         logging.error(f"error while updating the vehicle {str(e)}")
 
         return func.HttpResponse(json.dumps({"error":str(e)}), status_code=500)
+
+
+async def delete_vehicle(req : func.HttpRequest):
+    """ Delete Vehicle from Zoho"""
+        # Get the access token
+
+    try:
+        access_token=token_instance.get_access_token()
+
+        # Get the form data
+        body = req.get_json()
+        logging.info(f"received form data: {body}")
+
+
+        # Call the Update Api
+        response = VehicleApi.delete_vehicle(access_token,body)
+        logging.info(f"Vehicle update response {response}")
+
+        # Return the response
+        return func.HttpResponse(json.dumps(response), status_code=200)
+    
+    except Exception as e:
+        logging.error(f"error while updating the vehicle {str(e)}")
+
+        return func.HttpResponse(json.dumps({"error":str(e)}), status_code=500)

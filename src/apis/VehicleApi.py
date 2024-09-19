@@ -32,31 +32,6 @@ def get_account_id(access_token, unique_identifier, field_name):
         print("Error:", response)
 
 
-def search_duplicates(access_token, unique_identifier, field_name):
-    """
-    unique_identifier : Primary key to search
-    field_name : Name of the field to be searched
-
-    """
-    # API endpoint
-    url = "https://www.zohoapis.ca/crm/v2/Vehicles/search"
-
-    params = {"criteria": f"{field_name}:equals:{unique_identifier}"}
-
-    # Authorization Header
-    headers = {
-        "Authorization": f"Zoho-oauthtoken {access_token}",
-    }
-
-    # Make GET request to fetch id
-    response = requests.get(url, params=params, headers=headers)
-
-    # Check if request was successful
-    if response.status_code == 204: # content not found
-        return "NOT FOUND"
-    else:
-        return "FOUND"
-
 ## attach main or thumbnail image onto the record
 def attach_main_image_to_vehicle(access_token, vehicle_id, image_url):
     # Download the image content
@@ -85,7 +60,7 @@ def add_form_vehicle_into_crm(access_token, bubble_vehicle, main_image_url):
     }
     try:
     ## check for duplicate records
-        if search_duplicates(access_token,bubble_vehicle.get("VIN",''),"VIN") == "FOUND":
+        if get_vehicle_id(access_token,bubble_vehicle.get("VIN",''),"VIN") is not None: ## As no content will be return 204 response
             return {"message": "Vehicle already exists."}
     except Exception as e:
         print(f"error while checking for duplicates {str(e)}")
@@ -165,3 +140,26 @@ def get_vehicle_id(access_token, unique_identifier, field_name):
     else:
         print(f"Error: {response.status_code} - {response.text}")
         return None
+
+def delete_vehicle(access_token,data):
+    try:
+        ## if vehicle record ID is not passed, fetch it using Vin Match
+        if "id" not in data.keys():
+            vehicle_id = get_vehicle_id(access_token, data['data'][0]['Vin'], "VIN")
+            data['data'][0]['id'] = vehicle_id
+            print(vehicle_id)
+    except Exception as e:
+        print(e)
+
+    try:
+        url = f"https://www.zohoapis.ca/crm/v2/Vehicles/{data['data'][0]['id']}"
+        headers = {
+            "Authorization": f"Zoho-oauthtoken {access_token}",
+            "Content-Type": "application/json",
+        }
+
+        response = requests.delete(url, headers=headers)
+        return response.json()
+    except Exception as e:
+        print(e)
+        return {"error":str(e)}

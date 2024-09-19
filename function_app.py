@@ -61,3 +61,16 @@ async def vehicle_activation(req: func.HttpRequest) -> func.HttpResponse:
     except Exception as e:
         logging.error(f"Error processing request: {str(e)}")
         return func.HttpResponse("Internal server error", status_code=500)
+
+@app.route(route="vehicle-delete", methods=["POST"])
+async def vehicle_delete(req: func.HttpRequest) -> func.HttpResponse:
+    logging.info(f"Request received from {req.url}")
+
+    try:
+        response = await delete_vehicle(req=req)
+    
+        return response
+    
+    except Exception as e:
+        logging.error(f"Error processing request: {str(e)}")
+        return func.HttpResponse("Internal server error", status_code=500)
