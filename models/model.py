@@ -41,6 +41,7 @@ class Vehicle(BaseModel):
     VehicleConditionScore : Optional[str] = None
     Auction_URL : Optional[str] = None
     Auction_Date : Optional[str] = None
+    Status : Optional[str] = None
 
 
 class ActivationVehicle(BaseModel):

@@ -84,9 +84,10 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
                 Seller_Name=body.get('SellerName',''),
                 VehicleDescription=body.get('VehicleDescription',''),
                 VehicleCaptureType=body.get('VehicleCaptureType',''),
-                VehicleConditionScore=body.get('VehicleConditionScore',''),
+                ConditionScore=body.get('VehicleConditionScore',''),
                 Auction_URL=body.get('Auction_URL',''),
                 Auction_Date=format_datetime(body.get('Auction_Date','')),
+                Status=body.get('Status',''),
             )
             # Convert Vehicle instance to a dictionary
             bubble_vehicle = dict(vehicle)
@@ -98,7 +99,7 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
             bubble_vehicle.update({
             "Carfax_URL": Carfax_url,
             "Image_Link": main_image_url,
-            "Status": "Available",
+            "Status": vehicle.Status or "Available" ,
             "Exterior_colour": bubble_vehicle.get('Exterior_Color', ''),
         })
             vehicle_response = VehicleApi.add_form_vehicle_into_crm(access_token,bubble_vehicle,main_image_url)
