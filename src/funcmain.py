@@ -34,7 +34,7 @@ async def process_leads(access_token,vehicle_id,vehicle_row,VIN,Buyer_name=None,
             recommendations_df=recommendations_df[~recommendations_df['Buyer'].isin(Buyer_name)]
             logging.info(f"length of new recommendation received :  {len(recommendations_df)}")
         vehicle_name = vehicle_row['Make'] + " " + vehicle_row['Model'] + " " + vehicle_row['Trim'] + " " + str(vehicle_row['Year']) + "-" + str(vehicle_row['Mileage']) + "Km - " + VIN
-        recommendations_df = recommendations_df[:15]
+        recommendations_df = recommendations_df[:20]
         batchresponse = LeadApi.add_leads(recommendations_df,vehicle_id,access_token,vehicle_name) ## add lead into zoho crm
         logging.info(f"Lead Batch Response : {batchresponse}")
     except Exception as e:

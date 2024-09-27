@@ -183,22 +183,16 @@ def filter_data_low(data: pd.DataFrame, make: str, model: str, year: float, trim
     filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
     result = filtered_data.groupby(['Buyer']).agg({
           "Date":"max",
-        #   "Greater90": "sum",
            "Platform" : "first",
       }).reset_index()
     
     purchase_count = filtered_data['Buyer'].value_counts().reset_index()
     purchase_count.columns = ['Buyer', 'Purchase Count']
     result = pd.merge(result, purchase_count, on='Buyer', how='left')
-   
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
-    #print(a)
     result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
- 
     result.reset_index(drop=True, inplace=True)
     result.sort_values(by="Purchase Count", ascending=False, inplace=True)
-    #print(result)
+ 
     print("Result of low lead filter:",result)
     return result,lead_score
   except Exception as e:
@@ -231,22 +225,16 @@ def filter_data_cold(data: pd.DataFrame, make: str, model: str, year: float, tri
     filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
     result = filtered_data.groupby(['Buyer']).agg({
           "Date":"max",
-        #   "Greater90": "sum",
            "Platform" : "first",
       }).reset_index()
     
     purchase_count = filtered_data['Buyer'].value_counts().reset_index()
     purchase_count.columns = ['Buyer', 'Purchase Count']
     result = pd.merge(result, purchase_count, on='Buyer', how='left')
-   
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
-    #print(a)
     result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
- 
     result.reset_index(drop=True, inplace=True)
     result.sort_values(by="Purchase Count", ascending=False, inplace=True)
-    #print(result)
+  
     print("Result of low lead filter:",result)
     return result,lead_score
   except Exception as e:
@@ -279,10 +267,8 @@ def filter_data_warm(data: pd.DataFrame, make: str, model: str, year: float, tri
     filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
     result = filtered_data.groupby(['Buyer']).agg({
           "Date":"max",
-        #   "Greater100": "sum",
            "Platform" : "first",
-          #"Greater105": "sum",
-          #"Greater110": "sum",
+      
       }).reset_index()
     
     purchase_count = filtered_data['Buyer'].value_counts().reset_index()
@@ -327,24 +313,16 @@ def filter_data_hot(data: pd.DataFrame, make: str, model: str, year: float, trim
     filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
     result = filtered_data.groupby(['Buyer']).agg({
           "Date":"max",
-        #   "Greater100": "sum",
            "Platform" : "first",
-          #"Greater105": "sum",
-          #"Greater110": "sum",
+         
       }).reset_index()
     
     purchase_count = filtered_data['Buyer'].value_counts().reset_index()
     purchase_count.columns = ['Buyer', 'Purchase Count']
     result = pd.merge(result, purchase_count, on='Buyer', how='left')
-    # print("Result:",result)
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
-    # print(a)
     result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
-    
-    # print(a)
-   # result['Recent'] = 100/((datetime.now().date() - result['Date'].dt.date).dt.days)
-    #result['HVP'] = result['Greater100']+result['Greater105']+result['Greater110']
+
+   
     result.reset_index(drop=True, inplace=True)
     result.sort_values(by="Purchase Count", ascending=False, inplace=True)
     print("result of cold lead filter ",result)
@@ -380,20 +358,15 @@ def filter_data_very_hot(data: pd.DataFrame, make: str, model: str, year: float,
     filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
     result = filtered_data.groupby(['Buyer']).agg({
           "Date":"max",
-        #   "Greater100": "sum",
-          "Platform" : "first",
-          #"Greater105": "sum",
-          #"Greater110": "sum",
+          "Platform" : "first",     
       }).reset_index()
     
     purchase_count = filtered_data['Buyer'].value_counts().reset_index()
     purchase_count.columns = ['Buyer', 'Purchase Count']
     result = pd.merge(result, purchase_count, on='Buyer', how='left')
     print("Result of hot lead filter:",result)
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
-    print(a)
     result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
+   
     
     print(a)
 

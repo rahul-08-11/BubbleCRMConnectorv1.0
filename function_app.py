@@ -5,9 +5,8 @@ from src.funcmain import *
 
 app = func.FunctionApp(http_auth_level=func.AuthLevel.FUNCTION)
 
-# currently reading saved csv files
 global sold_df, average_price_df
-sold_df = pd.read_csv("sold1.0.csv", low_memory=False)
+sold_df = pd.read_csv("sold_appraise.csv", low_memory=False)
 average_price_df = pd.read_csv("average_purhcase.csv")
 
 
