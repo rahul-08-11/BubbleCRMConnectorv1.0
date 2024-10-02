@@ -67,18 +67,20 @@ class BuyerRecommendation:
     
     ## matrix apprasail 
     def appraisal_m(self, df : pd.DataFrame)->pd.DataFrame:
-        def cal_appraisal_score(purchase_price, app_90, app_95, app_100):
-            if purchase_price > app_90:
+        def cal_appraisal_score(purchase_price, app_95, app_100, app_105, app_110):
+            if purchase_price > app_110:
                 return 10
-            elif purchase_price > app_95:
+            elif purchase_price > app_105:
                 return 8
             elif purchase_price > app_100:
                 return 6
+            elif purchase_price > app_95:
+                return 4
             else:
                 return 0
 
-        df['Appraisal Score'] = df[['Purchase Price', '90', '95', '100']].apply(
-            lambda row: cal_appraisal_score(row['Purchase Price'], row['90'], row['95'], row['100']), axis=1
+        df['Appraisal Score'] = df[['Purchase Price', '95', '100','105','110']].apply(
+            lambda row: cal_appraisal_score(row['Purchase Price'], row['95'], row['100'], row['105'], row['110']), axis=1
         )
 
         df['Count'] = 1
