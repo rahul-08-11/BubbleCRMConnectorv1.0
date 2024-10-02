@@ -1,510 +1,196 @@
 import pandas as pd
 import re
-import hashlib
-import string
+from fuzzywuzzy import fuzz
+import numpy as np
+import logging
 
+class BuyerRecommendation:
 
-def generate_unique_id(text,other=''):
-        # Remove brackets and punctuation
-    text = text.translate(str.maketrans('', '', string.punctuation)) ## remove punctuations
-    other = other.translate(str.maketrans('', '', string.punctuation))
-    # Combine company name and address
-    unique_string = f"{text}{other}"
-    unique_string.replace(",",'').replace(" ",'').replace("'",'').replace('"','').replace(".",'')
-    
-    # Create an MD5 hash object
-    hash_object = hashlib.md5(unique_string.encode())
-    
-    # Generate the hexadecimal representation of the hash
-    unique_id = hash_object.hexdigest()
-    
-    return unique_id
+    def __init__(self):
+        """ Buyer Recommendation Class """
+        logging.info("--Getting Buyer Recommendation---")
 
+    ## matrix Trim Score
+    def trim_m(self, df :pd.DataFrame ,vehicle_trim : str  )  -> pd.DataFrame:
+        df['Trim Score'] = df['Trim'].apply(lambda x: fuzz.ratio(x, vehicle_trim)/10 if isinstance(x, str) else 0)
+        return df
+#    
 
-def get_leads_for_vehicle(vehicle_row, df_sold,vehicle_source,avg_price_df):
-    ## extract the required attributes
-    df_sold['Make'] = df_sold['Make'].str.lower().str.strip()
-    df_sold['Model'] = df_sold['Model'].str.lower().str.strip()
-    df_sold['Trim'] = df_sold['Trim'].str.lower().str.strip()
-    
-    year = int(vehicle_row['Year'].strip())
-    make = vehicle_row['Make'].lower().strip()
-    model = vehicle_row['Model'].lower().strip()
-    trim = vehicle_row['Trim'].lower().strip()
-    mileage = int(str(vehicle_row['Mileage']).strip())
-    print(year,make,model,trim,mileage)
-    """
-    Get recommendations for hot, warm, and cold leads for a given vehicle.
-    """
-    hot_lead = None
-    warm_lead = None
-    cold_lead = None
-    try:
-        hot_lead, hot_score = get_buyer_recommendations_very_hot(df_sold, make, model, year, trim, mileage, trim_similarity=80)
-        hot_lead['Score'] = hot_score
-    except Exception as e:
-        print(f"No hot leads: {e}")
-    try:
-        warm_lead, warm_score = get_buyer_recommendations_hot(df_sold, make, model, year, trim, mileage, trim_similarity=80)
-        warm_lead['Score'] = warm_score
-        # warm_lead = warm_lead[:10]
-    except Exception as e:
-        print(f"No warm leads: {e}")
-    try:
-        cold_lead, cold_score = get_buyer_recommendations_warm(df_sold, make, model, year, trim, mileage, trim_similarity=80)
-        cold_lead['Score'] = cold_score
-        # cold_lead = cold_lead[:5]
-    except Exception as e:
-        print(f"No cold leads: {e}")
-
-    try:
-        low_lead, low_score = get_buyer_recommendations_cold(df_sold, make, model, year, trim, mileage, trim_similarity=80)
-        low_lead['Score'] = low_score
-
-    except Exception as e:
-        print(f"No low leads")
-
-    try:
-        lowest_lead,lowest_score = get_buyer_recommendations_low(df_sold, make, model, year, trim, mileage, trim_similarity=80)
-        lowest_lead['Score']=lowest_score
-    except Exception as e:
-        print(f"No lowest leads")
-
-    all_leads = pd.concat([hot_lead, warm_lead, cold_lead,low_lead], ignore_index=True)
-    print("all leads are ",all_leads)
-    # updated_leads.drop_duplicates(inplace=True)
-    updated_leads=update_lead_score(all_leads,vehicle_source,avg_price_df) ## update score based on avg price and source of the vehicle and buyers
-    final_leads= sort_leads(updated_leads)  ## arange the leads based on score to get hot - > warm - > cold
-    print(f"-----------------------------------final leads : {len(final_leads) }---------------------")
-    return final_leads
-        
-def sort_leads(result):
-    ## it will prioratize lead if the lead are same but has different score than prioratize hot--->warm-->cold
-    ## create a map
-    category_values = {'Very Hot':5,'Hot': 4, 'Warm': 2, 'Cold': 1,'Low':0}
-    result['ScoreNumeric'] = result['Score'].map(category_values)
-    result['Purhcase Score'] = (result['ScoreNumeric'] * 0.7) * (result['Purchase Count'] * 0.3)
-    result.sort_values(by='Purhcase Score', ascending=False, inplace=True)
-    
-    # Drop duplicates, keeping the highest 'Purchase Score' within each group
-    result = result.drop_duplicates(subset=['Buyer'], keep='first')
-    return result
-
-
-
-## standardize company name by removing potentially conflicting characters
-def clean_company_name(name):
-    # Capitalize the first letter of each word
-    name = name.title()
-    # Remove punctuation except hyphens
-    name = re.sub(r'[^\w\s-]', '', name)
-    # Remove extra spaces
-    name = name.strip()
-    return name
-
-
-def update_lead_score(leads,vehicle_source,avg_price_df):
-    """plateform : which sold data we are using for updating the score"""
-    """source of vehicle such as eblock,traderev etc"""
-    """A warm lead can turn into hot if the recommended buyer has an average purchase price of 105% or more. 
-    A cold/warm lead can turn into a hot if it’s a TradeRev only buyer and the car is coming from eblock."""
-    print(f"--------------Number of leads for vehicle : {len(leads)} and vehicle source : {vehicle_source}----------------------------------------")
-    for index, row in leads.iterrows():
-        buyer = clean_company_name(row['Buyer'])
-        initial_score = row['Score']
+    ## matrix year Score
+    def year_m(self, df : pd.DataFrame, vehicle_year : str)->pd.DataFrame:
+        # Convert vehicle_year to numeric, if it's not already
         try:
-            avg_price = avg_price_df[avg_price_df['Buyer'] == buyer]['Average Purchase Price'].values[0]
-        except Exception as e:
-            avg_price = 0
+            vehicle_year = int(vehicle_year)  # Assuming vehicle_year should be an integer
+        except ValueError:
+            raise ValueError("vehicle_year must be a valid integer.")
+
+        # Ensure 'Year' column is numeric and handle non-numeric values
+        df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+
+        # Optionally drop rows with NaN values in 'Year' column
+        df = df.dropna(subset=['Year'])
+        # Calculate the absolute difference between each year and the input year
+        df['year_diff'] = abs(df['Year'] - vehicle_year)
+
+        # Find the maximum difference to normalize scores
+        max_year_diff = df['year_diff'].max()
+
+        # Define the scoring logic based on the absolute year difference
+        def calculate_year_score(year_diff, max_diff):
+            if max_diff == 0:
+                return 10
+            score = 10 - (year_diff / max_diff) * 10
+            # Ensure the score is not negative
+            return max(score, 0)
+
+        # Apply the scoring function to calculate YearScore
+        df['Year Score'] = df['year_diff'].apply(calculate_year_score, max_diff=max_year_diff)
+
+        return df
+
+    ## matrix mileage Score
+    def mileage_m(self, df : pd.DataFrame, vehicle_mileage : str)->pd.DataFrame:
+        # calculate mileage difference to get deviation
+        df['Mileage_diff'] = abs(df['Mileage'] - vehicle_mileage)
+        # calculate max mileage
+        max_mileage_diff = df['Mileage_diff'].max()
+
+        def calculate_mileage_score(mileage_diff, max_diff):
+            if max_diff == 0:
+                return 10
+            score = 10 - (mileage_diff / max_diff) * 10
+            return max(score, 0)
+
+        df['Mileage Score'] = df['Mileage_diff'].apply(calculate_mileage_score, max_diff=max_mileage_diff)
+        return df
+
     
-        print(f"coming from update lead score",avg_price)
-        print(f"Initial lead status for {buyer} ==> Score: {row['Score']} ==> VehicleSource: {vehicle_source}")
-        platform = row['Platform']
-        if avg_price >=105:
-            if initial_score == 'Cold':
-                leads.loc[index, 'Score'] = 'Warm'
-            elif initial_score == 'Warm':
-                leads.loc[index, 'Score'] = 'Hot'
-                print(f"Lead updated for {buyer} ==> Score: Hot ==> VehicleSource: {vehicle_source} ==> Reason: Average Purchase Price equal or above 105% and already had Warm Score")
-            elif platform == 'Only Traderev' and vehicle_source in ['Run List', 'If Bid']:
-                leads.loc[index, 'Score'] = 'Hot'
-                print(f"Lead updated for {buyer} ==> Score: Hot ==> VehicleSource: {vehicle_source} ==> Reason: Is only Traderev and Vehicle coming from eblock as well as High Spender above 105%")
-            elif platform == 'Only Eblock' and vehicle_source == 'TR Upcoming':
-                leads.loc[index, 'Score'] = 'Hot'
-                print(f"Lead updated for {buyer} ==> Score: Hot ==> VehicleSource: {vehicle_source} ==> Reason: Is only Eblock and Vehicle coming from traderev as well as High Spender above 105%")
+    ## matrix apprasail 
+    def appraisal_m(self, df : pd.DataFrame)->pd.DataFrame:
+        def cal_appraisal_score(purchase_price, app_90, app_95, app_100):
+            if purchase_price > app_90:
+                return 10
+            elif purchase_price > app_95:
+                return 8
+            elif purchase_price > app_100:
+                return 6
+            else:
+                return 0
+
+        df['Appraisal Score'] = df[['Purchase Price', '90', '95', '100']].apply(
+            lambda row: cal_appraisal_score(row['Purchase Price'], row['90'], row['95'], row['100']), axis=1
+        )
+
+        df['Count'] = 1
+
+        return df
+    
+    # Categorizer
+    def categorize_intensity(self, percentage: float) -> str:
+        if percentage < 12.5:
+            return 'Cold'
+        elif percentage < 25:
+            return 'Moderate'
+        elif percentage < 37.5:
+            return 'Warm'
         else:
-            print(f"Lead not updated for {buyer} ==> Score: {row['Score']} ==> Vehicle Source: {vehicle_source} ==> Reason: Not a spender above 105%")
-    return leads
+            return 'Hot'
+        
 
 
-def filter_dataset(df: pd.DataFrame, make: str, model: str):
-    # Filter the DataFrame for the specified make and model
-    filtered_df = df[(df['Make'] == make) & (df['Model'] == model)]
-    print(filtered_df)
-    # Group by 'Buyer' and calculate the mean of other columns
-    result = filtered_df.groupby(['Buyer', 'Make', 'Model']).agg({
-        'Purchase Price': 'mean',  # Calculate the mean purchase price
-        "90": 'mean',                 # Calculate the mean for column '90'
-        "95": 'mean',                 # Calculate the mean for column '95'
-        "100": 'mean',                # Calculate the mean for column '100'
-        "105": 'mean',                # Calculate the mean for column '105'
-        "110": 'mean'                 # Calculate the mean for column '110'
-    }).reset_index()
+    def recommend_buyers(self,vehicle_row, df_sold,vehicle_source,avg_price_df):
+        ## extract the required attributes
+        try:
+            df_sold['Make'] = df_sold['Make'].str.lower().str.strip()
+            df_sold['Model'] = df_sold['Model'].str.lower().str.strip()
+            df_sold['Trim'] = df_sold['Trim'].str.lower().str.strip()
+            df_sold['Mileage'] = pd.to_numeric(df_sold['Mileage'].astype(str).str.replace(r'[^\d]', '', regex=True), errors='coerce').fillna(0)
+            df_sold['Year'] = pd.to_numeric(df_sold['Year'].astype(str).str.replace(r'[^\d]', '', regex=True), errors='coerce').fillna(0)
+                
+            vehicle_make = vehicle_row['Make'].lower().strip()
+            vehicle_model = vehicle_row['Model'].lower().strip()
+            vehicle_trim = vehicle_row['Trim'].lower().strip()
+            vehicle_mileage = int(re.sub(r'[^\d]', '', str(vehicle_row['Mileage'])).strip())
+            vehicle_year = int(re.sub(r'[^\d]', '', str(vehicle_row['Year'])).strip())
 
-    # Count the number of purchases per buyer
-    purchase_count = filtered_df['Buyer'].value_counts().reset_index()
-    purchase_count.columns = ['Buyer', 'Purchase Count']  # Rename columns for clarity
+        except Exception as e:
 
-    # Merge the results
-    result = pd.merge(result, purchase_count, on='Buyer', how='left')  # Merge on 'Buyer' column
-    return result
+            logging.error(e)
+            
+        try:
+            filtered_df = df_sold[
+                (df_sold['Make'] == vehicle_make) &
+                (df_sold['Model'] == vehicle_model) 
+            ]
+            filtered_df = self.trim_m(filtered_df, vehicle_trim)
+            filtered_df = self.year_m(filtered_df, vehicle_year)
+            filtered_df = self.mileage_m(filtered_df, vehicle_mileage)
+            filtered_df = self.appraisal_m(filtered_df)
 
-def filter_data_low(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float):
-  """
-  Filter data based on make, model, year, mileage, and trim.
-  """
-  print("\n\nfilter_data_low",type(mileage),mileage)
-  try:
-    lower_bound = float(mileage) * 0
-    upper_bound = float(mileage) * 3
-    
-    try:
-        filtered_data = data[(data['Make'] == make) &
-                        (data['Model'] == model) &
-                        (data["Mileage"].between(lower_bound, upper_bound)) &
-                        (data['Year'].between(float(year)-3,float(year)+3))
-                        ]
-        lead_score="Low"
-        print("low Filter:",filtered_data)
-    except Exception as e:
-        print(e)
-        pass
-    
-    filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
-    result = filtered_data.groupby(['Buyer']).agg({
-          "Date":"max",
-           "Platform" : "first",
-      }).reset_index()
-    
-    purchase_count = filtered_data['Buyer'].value_counts().reset_index()
-    purchase_count.columns = ['Buyer', 'Purchase Count']
-    result = pd.merge(result, purchase_count, on='Buyer', how='left')
-    result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-    result.reset_index(drop=True, inplace=True)
-    result.sort_values(by="Purchase Count", ascending=False, inplace=True)
- 
-    print("Result of low lead filter:",result)
-    return result,lead_score
-  except Exception as e:
-    print(e)
-    return None
+            buyers = filtered_df.groupby('Buyer').agg({
+                "Trim Score":"mean",
+                "Year Score":"mean",
+                'Mileage Score':'mean',
+                "Appraisal Score":"mean",
+                "Count":"sum",
+                "Platform":"first"
+            }).reset_index()
+
+            ## scale count score
+            buyers['Count Score'] = buyers['Count'].apply(lambda x : (x/buyers['Count'].max()) * 10)
+            buyers['BScore'] = buyers['Trim Score'] + buyers['Year Score'] + buyers['Mileage Score'] + buyers['Appraisal Score'] + buyers['Count Score']
+            buyers.sort_values(by='BScore',inplace=True, ascending=False)
+            buyers['Score'] = buyers['BScore'].apply(lambda x : self.categorize_intensity(x))
+            final_leads=self.update_lead_score(buyers,vehicle_source,avg_price_df)
+
+            logging.info(final_leads)
+       
+            return final_leads
+        except Exception as e:
+
+            logging.error(e)
+            return []
+           
 
 
 
-def filter_data_cold(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float):
-  """
-  Filter data based on make, model, year, mileage, and trim.
-  """
-  print("\n\nfilter_data_cold",type(mileage),mileage)
-  try:
-    lower_bound = float(mileage) * 0
-    upper_bound = float(mileage) * 2.5
-    
-    try:
-        filtered_data = data[(data['Make'] == make) &
-                        (data['Model'] == model) &
-                        (data["Mileage"].between(lower_bound, upper_bound)) &
-                        (data['Year'].between(float(year)-2,float(year)+2))
-                        ]
-        lead_score="Cold"
-        print("Cold Filter:",filtered_data)
-    except Exception as e:
-        print(e)
-        pass
-    
-    filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
-    result = filtered_data.groupby(['Buyer']).agg({
-          "Date":"max",
-           "Platform" : "first",
-      }).reset_index()
-    
-    purchase_count = filtered_data['Buyer'].value_counts().reset_index()
-    purchase_count.columns = ['Buyer', 'Purchase Count']
-    result = pd.merge(result, purchase_count, on='Buyer', how='left')
-    result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-    result.reset_index(drop=True, inplace=True)
-    result.sort_values(by="Purchase Count", ascending=False, inplace=True)
-  
-    print("Result of low lead filter:",result)
-    return result,lead_score
-  except Exception as e:
-    print(e)
-    return None
+    ## standardize company name by removing potentially conflicting characters
+    def standardize_cname(self, name):
+        # Capitalize the first letter of each word
+        name = name.title()
+        # Remove punctuation except hyphens
+        name = re.sub(r'[^\w\s-]', '', name)
+        # Remove extra spaces
+        name = name.strip()
+        return name
 
 
+    def update_lead_score(self,leads,vehicle_source,avg_price_df):
+        """plateform : which sold data we are using for updating the score"""
+        """source of vehicle such as eblock,traderev etc"""
+        """A warm lead can turn into hot if the recommended buyer has an average purchase price of 105% or more. 
+        A cold/warm lead can turn into a hot if it’s a TradeRev only buyer and the car is coming from eblock."""
 
-def filter_data_warm(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float) -> pd.DataFrame:
-  """
-  Filter data based on make, model, year, mileage, and trim.
-  """
-  print("\n\nfilter_data_warm",type(mileage),mileage)
-  try:
-    lower_bound = float(mileage) * 0
-    upper_bound = float(mileage) * 1.9
-    
-    try:
-        filtered_data = data[(data['Make'] == make) &
-                        (data['Model'] == model) &
-                        (data["Mileage"].between(lower_bound, upper_bound)) &
-                        (data['Year'].between(float(year)-2,float(year)+2))
-                        ]
-        lead_score="Warm"
-        print("Warm Filter:",filtered_data)
-    except Exception as e:
-        print(e)
-        pass
-    
-    filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
-    result = filtered_data.groupby(['Buyer']).agg({
-          "Date":"max",
-           "Platform" : "first",
-      
-      }).reset_index()
-    
-    purchase_count = filtered_data['Buyer'].value_counts().reset_index()
-    purchase_count.columns = ['Buyer', 'Purchase Count']
-    result = pd.merge(result, purchase_count, on='Buyer', how='left')
-   
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
-    #print(a)
-    result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-    a=pd.api.types.is_datetime64_any_dtype(data['Date'])
- 
-    result.reset_index(drop=True, inplace=True)
-    result.sort_values(by="Purchase Count", ascending=False, inplace=True)
-    #print(result)
-    print("Result of cold lead filter:",result)
-    return result,lead_score
-  except Exception as e:
-    print(e)
-    return None
+        leads['Buyer'] = leads['Buyer'].apply(self.standardize_cname)
+        leads = leads.merge(avg_price_df[['Buyer', 'Average Purchase Price']], on='Buyer', how='left').fillna({'Average Purchase Price': 0})
+    # Define conditions
+        conditions = [
+            (leads['Average Purchase Price'] >= 105) & (leads['Score'] == 'Cold'),
+            (leads['Average Purchase Price'] >= 105) & (leads['Score'] == 'Warm'),
+            (leads['Average Purchase Price'] >= 105) & (leads['Platform'] == 'Only Traderev') & (vehicle_source in ['Run List', 'If Bid']),
+            (leads['Average Purchase Price'] >= 105) & (leads['Platform'] == 'Only Eblock') & (vehicle_source== 'TR Upcoming')
+        ]
 
-def filter_data_hot(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float) -> pd.DataFrame:
-  """
-  Filter data based on make, model, year, mileage, and trim.
-  """
-  print("\n\nfilter_data_hot",type(mileage),mileage)
-  try:
-    lower_bound = float(mileage) * 0
-    upper_bound = float(mileage) * 1.6
-    
-    try:
-        filtered_data = data[(data['Make'] == make) &
-                        (data['Model'] == model) &
-                        (data['Trim'] == trim) &
-                        (data["Mileage"].between(lower_bound, upper_bound)) &
-                        (data['Year'].between(float(year)-1,float(year)+1))
-                        ]
-        lead_score="Hot"
-        print("Hot Filter:",filtered_data)
-    except Exception as e:
-        print("Hot Filter Error:",e)
-        pass
-    filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
-    result = filtered_data.groupby(['Buyer']).agg({
-          "Date":"max",
-           "Platform" : "first",
-         
-      }).reset_index()
-    
-    purchase_count = filtered_data['Buyer'].value_counts().reset_index()
-    purchase_count.columns = ['Buyer', 'Purchase Count']
-    result = pd.merge(result, purchase_count, on='Buyer', how='left')
-    result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
+        # Step 3: Define corresponding results
+        choices = [
+            'Warm',  # If avg_price >= 105 and initial score is 'Cold'
+            'Hot',   # If avg_price >= 105 and initial score is 'Warm'
+            'Hot',   # Traderev platform with specific vehicle sources and avg_price >= 105
+            'Hot'    # Eblock platform with specific vehicle sources and avg_price >= 105
+        ]
 
-   
-    result.reset_index(drop=True, inplace=True)
-    result.sort_values(by="Purchase Count", ascending=False, inplace=True)
-    print("result of cold lead filter ",result)
-    return result,lead_score
-  except Exception as e:
-    print(e)
-    return None
+        #  Apply the conditions
+        leads['Score'] = np.select(conditions, choices, default=leads['Score'])
+        logging.info(f"length of leads Updated {len(leads)}")
 
-
-    
-def filter_data_very_hot(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float) -> pd.DataFrame:
-  """
-  Filter data based on make, model, year, mileage, and trim.
-  """
-  print("\n\nfilter_data_very_hot",type(mileage),mileage)
-  try:
-    lower_bound = float(mileage) * 0
-    upper_bound = float(mileage) * 1.3
-    
-    try:
-        filtered_data = data[(data['Make'] == make) &
-                        (data['Model'] == model) & 
-                        (data['Trim'] == trim) &
-                        (data["Mileage"].between(lower_bound, upper_bound)) &
-                        (data['Year'] == year)
-                        ]
-        print("Filtered Data First Test",filtered_data)
-        lead_score="Very Hot"
-    except Exception as e:
-        print(e)
-        pass
-    
-    filtered_data['Date'] = pd.to_datetime(filtered_data['Date'], errors='coerce')
-    result = filtered_data.groupby(['Buyer']).agg({
-          "Date":"max",
-          "Platform" : "first",     
-      }).reset_index()
-    
-    purchase_count = filtered_data['Buyer'].value_counts().reset_index()
-    purchase_count.columns = ['Buyer', 'Purchase Count']
-    result = pd.merge(result, purchase_count, on='Buyer', how='left')
-    print("Result of hot lead filter:",result)
-    result['Date'] = pd.to_datetime(result['Date'], errors='coerce')
-   
-    
-    print(a)
-
-    result.reset_index(drop=True, inplace=True)
-    result.sort_values(by="Purchase Count", ascending=False, inplace=True)
-    # print(result)
-    return result,lead_score
-  except Exception as e:
-    print(e)
-    return None
-
-
-
-def get_buyer_recommendations_warm(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float, trim_similarity=80) -> pd.DataFrame:
-  """
-  Get buyer recommendations based on make, model, year, mileage, and trim.
-  """
-  print("get_buyer_recommendations_warm data: \n",data.columns, len(data))
-  # Convert 'Date' column to datetime format
-  data['Date'] = pd.to_datetime(data['Date'].astype(str), errors='coerce')
-
-  # Format 'Date' column as '%m/%d/%y'
-  data['Date'] = data['Date'].dt.strftime('%m/%d/%y')
-
-  data['Mileage']=data['Mileage'].replace('[^\d.]','',regex=True)
-  data['Mileage']=pd.to_numeric(data['Mileage'])
-  data['Year']=pd.to_numeric(data['Year'])
-  data["Greater100"] = data["Purchase Price"] > data["100"]
-  data = data[data["Greater100"]]
-  print("After Cleaning data:",len(data),data.columns)
-  print("Here")
-  recommendations_warm,score = filter_data_warm(data, make, model, year, trim, mileage)
-  print("len of recommendations",len(recommendations_warm))
-
- # recommendations_hot.to_csv("hotrec.csv")
-  return recommendations_warm,score
-
-
-def get_buyer_recommendations_cold(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float, trim_similarity=80):
-  """
-  Get buyer recommendations based on make, model, year, mileage.
-  """
-  print("get_buyer_recommendations_cold data: \n",data.columns, len(data))
-  # Convert 'Date' column to datetime format
-  data['Date'] = pd.to_datetime(data['Date'].astype(str), errors='coerce')
-
-  # Format 'Date' column as '%m/%d/%y'
-  data['Date'] = data['Date'].dt.strftime('%m/%d/%y')
-
-  data['Mileage']=data['Mileage'].replace('[^\d.]','',regex=True)
-  data['Mileage']=pd.to_numeric(data['Mileage'])
-  data['Year']=pd.to_numeric(data['Year'])
-  data["Greater100"] = data["Purchase Price"] > data["100"]
-  data = data[data["Greater100"]]
-  print("After Cleaning data:",len(data),data.columns)
-  print("Here")
-  recommendations_cold,score = filter_data_cold(data, make, model, year, trim, mileage)
-  print("len of recommendations",len(recommendations_cold))
-
- # recommendations_hot.to_csv("hotrec.csv")
-  return recommendations_cold,score
-
-
-def get_buyer_recommendations_low(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float, trim_similarity=80):
-  """
-  Get buyer recommendations based on make, model, year, mileage.
-  """
-  print("get_buyer_recommendations_low data: \n",data.columns, len(data))
-  # Convert 'Date' column to datetime format
-  data['Date'] = pd.to_datetime(data['Date'].astype(str), errors='coerce')
-
-  # Format 'Date' column as '%m/%d/%y'
-  data['Date'] = data['Date'].dt.strftime('%m/%d/%y')
-
-  data['Mileage']=data['Mileage'].replace('[^\d.]','',regex=True)
-  data['Mileage']=pd.to_numeric(data['Mileage'])
-  data['Year']=pd.to_numeric(data['Year'])
-  data["Greater90"] = data["Purchase Price"] > data["90"]
-  data = data[data["Greater90"]]
-  print("After Cleaning data:",len(data),data.columns)
-  print("Here")
-  recommendations_low,score = filter_data_low(data, make, model, year, trim, mileage)
-  print("len of recommendations",len(recommendations_low))
-
- # recommendations_hot.to_csv("hotrec.csv")
-  return recommendations_low,score
-
-
-def get_buyer_recommendations_hot(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float, trim_similarity=80) -> pd.DataFrame:
-  """
-  Get buyer recommendations based on make, model, year, mileage, and trim.
-  """
-  print("get_buyer_recommendations_warm data: \n",data.columns, len(data))
-  # Convert 'Date' column to datetime format
-  print("Cleaning Date")
-  data['Date'] = pd.to_datetime(data['Date'].astype(str), errors='coerce')
-
-  # Format 'Date' column as '%m/%d/%y'
-  data['Date'] = data['Date'].dt.strftime('%m/%d/%y')
-  print("Cleaning Mileage")
-  data['Mileage']=data['Mileage'].replace('[^\d.]','',regex=True)
-  data['Mileage']=pd.to_numeric(data['Mileage'])
-  data['Year']=pd.to_numeric(data['Year'])
-  data["Greater100"] = data["Purchase Price"] > data["100"]
-  data = data[data["Greater100"]]
-  print("After Cleaning data:",len(data),data.columns)
-  print("Here")
-  recommendations_hot ,score= filter_data_hot(data, make, model, year, trim, mileage)
-  print("len of recommendations",len(recommendations_hot))
-
- # recommendations_hot.to_csv("hotrec.csv")
-  return recommendations_hot,score
-
-
-
-def get_buyer_recommendations_very_hot(data: pd.DataFrame, make: str, model: str, year: float, trim: str, mileage: float, trim_similarity=80) -> pd.DataFrame:
-  """
-  Get buyer recommendations based on make, model, year, mileage, and trim.
-  """
-  print("get_buyer_recommendations_hot data: \n",data.columns, len(data))
-  # Convert 'Date' column to datetime format
-  data['Date'] = pd.to_datetime(data['Date'].astype(str), errors='coerce')
-
-  # Format 'Date' column as '%m/%d/%y'
-  data['Date'] = data['Date'].dt.strftime('%m/%d/%y')
-
-  data['Mileage']=data['Mileage'].replace('[^\d.]','',regex=True)
-  data['Mileage']=pd.to_numeric(data['Mileage'])
-  data['Year']=pd.to_numeric(data['Year'])
-  data["Greater100"] = data["Purchase Price"] > data["100"]
-  data =data[data["Greater100"]]
-  print("After Cleaning data:",len(data),data.columns)
-  print("Here")
-  recommendations_very_hot ,score= filter_data_very_hot(data, make, model, year, trim, mileage)
-  print("len of recommendations",len(recommendations_very_hot))
-
- # recommendations_hot.to_csv("hotrec.csv")
-  return recommendations_very_hot,score
-
-
-
+        return leads 

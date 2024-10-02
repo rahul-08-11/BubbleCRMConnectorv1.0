@@ -59,7 +59,8 @@ This microservice enhances the functionality of a Bubble app by providing backen
 
 ## Usage
 
-Refer to the API documentation for details on available endpoints and their usage. ![Doc](https://autonerd.gitbook.io/bubble-service)
+Refer to the [API documentation](https://autonerd.gitbook.io/bubble-service) for details on available endpoints and their usage.
+
 
 
 ## Contributing

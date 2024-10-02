@@ -28,7 +28,7 @@ def get_account_id(access_token, unique_identifier, field_name):
         else:
             return None
     else:
-        print("Error:", response)
+        print(response.json())
 
 
 ## batch request
@@ -61,7 +61,7 @@ def add_leads(recommendation_df, vehicle_id, token, vehicle_name):
                 data.append(lead_data)
                 success_leads += 1
         except Exception as e:
-            print("error", e)
+            print(e)
 
     payload = {"data": data}
 

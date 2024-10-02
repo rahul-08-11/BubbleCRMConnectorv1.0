@@ -1,5 +1,5 @@
 import logging
-from recommendation import get_leads_for_vehicle
+from recommendation import BuyerRecommendation
 from src.apis import *
 from models import *
 from utils import *
@@ -10,13 +10,15 @@ import asyncio
 
 global token_instance
 token_instance = TokenManager()
+buyer_instance = BuyerRecommendation()
 
-async def process_leads(access_token,vehicle_id,vehicle_row,VIN,Buyer_name=None,sold_database=None,avg_purchase_price_df=None):
+async def process_leads(access_token,vehicle_row,Buyer_names=None,sold_database=None,avg_purchase_price_df=None):
     try:
+        vehicle_id = vehicle_row['id']
         ## update URL field with bubble app vehicle listing link 
         url = f"https://tradegeek.io/vehicle_details/{vehicle_id}"
 
-        vehicle_url_data = {
+        url_body = {
         "data": [
             {
                 "id": vehicle_id,
@@ -24,19 +26,20 @@ async def process_leads(access_token,vehicle_id,vehicle_row,VIN,Buyer_name=None,
             }
         ]
     }
-        
-        VehicleApi.update_vehicle(access_token,vehicle_url_data)
+        # update vehicle url
+        VehicleApi.update_vehicle(access_token,url_body)
         ## get the recommendation or leads ,provide the source of vehicle,sold database ,Vehicle details and average purchase price to update lead score
-        recommendations_df = get_leads_for_vehicle(vehicle_row,sold_database,"Website Input",avg_purchase_price_df  )
+        print(vehicle_row['source'])
+        recommendations_df = buyer_instance.recommend_buyers(vehicle_row,sold_database,vehicle_row['source'],avg_purchase_price_df  )
         logging.info(f"length of recommendation received for RUNLIST vehicle  :  {len(recommendations_df)}")
-        if Buyer_name is not None:
+        if Buyer_names is not None:
             logging.info("Getting new set of Potential Buyers")
-            recommendations_df=recommendations_df[~recommendations_df['Buyer'].isin(Buyer_name)]
+            recommendations_df=recommendations_df[~recommendations_df['Buyer'].isin(Buyer_names)]
             logging.info(f"length of new recommendation received :  {len(recommendations_df)}")
-        vehicle_name = vehicle_row['Make'] + " " + vehicle_row['Model'] + " " + vehicle_row['Trim'] + " " + str(vehicle_row['Year']) + "-" + str(vehicle_row['Mileage']) + "Km - " + VIN
-        recommendations_df = recommendations_df[:20]
-        batchresponse = LeadApi.add_leads(recommendations_df,vehicle_id,access_token,vehicle_name) ## add lead into zoho crm
+        vehicle_name = vehicle_row['Make'] + " " + vehicle_row['Model'] + " " + vehicle_row['Trim'] + " " + str(vehicle_row['Year']) + "-" + str(vehicle_row['Mileage']) + "Km - " + vehicle_row['Vin']
+        batchresponse = LeadApi.add_leads(recommendations_df[:20],vehicle_id,access_token,vehicle_name) ## add lead into zoho crm
         logging.info(f"Lead Batch Response : {batchresponse}")
+
     except Exception as e:
         logging.error(f"Error Occured While Adding Leads {e}")
 
@@ -109,16 +112,19 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
 
             except Exception as e:
                 logging.info(f"Error adding submitted vehicle in zoho {e}")
-                return func.HttpResponse(json.dumps(vehicle_response), status_code=500)
+                # return func.HttpResponse(json.dumps(vehicle_response), status_code=500)
             
             vehicle_row = {
+                "id":vehicle_id,
                 "Make": vehicle.Make,
                 "Model": vehicle.Model,
                 "Year": vehicle.Year,
                 "Trim": vehicle.Trim,
                 "Mileage": vehicle.Mileage,
+                "Vin":vehicle.VIN,
+                "source":vehicle.Source
             }
-            asyncio.create_task(process_leads(access_token,vehicle_id, vehicle_row, vehicle.VIN, None, sold_database=sold_df, avg_purchase_price_df=average_price_df))
+            asyncio.create_task(process_leads(access_token, vehicle_row, None, sold_database=sold_df, avg_purchase_price_df=average_price_df))
 
 
             return func.HttpResponse(json.dumps({"details":vehicle_row,"Vehicle ID":vehicle_id,"code":"SUCCESS"}), status_code=200) 
@@ -167,11 +173,14 @@ async def reactivate_vehicle(req : func.HttpRequest,sold_df=None,average_price_d
 
         # Create vehicle required details placeholder
         vehicle_row = {
-                "Make": ActiveVehicle.Make,
-                "Model": ActiveVehicle.Model,
-                "Year": ActiveVehicle.Year,
-                "Mileage": ActiveVehicle.Mileage,
-                "Trim": ActiveVehicle.Trim,
+            "id":ActiveVehicle.Vehicle_ID,
+            "Make": ActiveVehicle.Make,
+            "Model": ActiveVehicle.Model,
+            "Year": ActiveVehicle.Year,
+            "Mileage": ActiveVehicle.Mileage,
+            "Trim": ActiveVehicle.Trim,
+            "Vin":ActiveVehicle.Vehicle_VIN,
+            "source":"Website Input"
         }
 
         # Get existing leads
@@ -184,7 +193,7 @@ async def reactivate_vehicle(req : func.HttpRequest,sold_df=None,average_price_d
             logging.warning(f"Error fetching existings leads from zoho {e}")
 
         # Add new set of buyers
-        asyncio.create_task(process_leads(access_token,ActiveVehicle.Vehicle_ID, vehicle_row,ActiveVehicle.Vehicle_VIN, existing_leads, sold_database=sold_df, avg_purchase_price_df=average_price_df))
+        asyncio.create_task(process_leads(access_token, vehicle_row, Buyer_names = existing_leads, sold_database=sold_df, avg_purchase_price_df=average_price_df))
         return func.HttpResponse(json.dumps({"Vehicle ID":ActiveVehicle.Vehicle_ID,"code":"SUCCESS"}), status_code=200) 
 
     except Exception as e:
