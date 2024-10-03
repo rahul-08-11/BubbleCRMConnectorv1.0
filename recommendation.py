@@ -108,7 +108,7 @@ class BuyerRecommendation:
             df_sold['Trim'] = df_sold['Trim'].str.lower().str.strip()
             df_sold['Mileage'] = pd.to_numeric(df_sold['Mileage'].astype(str).str.replace(r'[^\d]', '', regex=True), errors='coerce').fillna(0)
             df_sold['Year'] = pd.to_numeric(df_sold['Year'].astype(str).str.replace(r'[^\d]', '', regex=True), errors='coerce').fillna(0)
-                
+            print(df_sold.dtypes)
             vehicle_make = vehicle_row['Make'].lower().strip()
             vehicle_model = vehicle_row['Model'].lower().strip()
             vehicle_trim = vehicle_row['Trim'].lower().strip()
@@ -125,9 +125,11 @@ class BuyerRecommendation:
                 (df_sold['Model'] == vehicle_model) 
             ]
             filtered_df = self.trim_m(filtered_df, vehicle_trim)
+            print(filtered_df)
             filtered_df = self.year_m(filtered_df, vehicle_year)
             filtered_df = self.mileage_m(filtered_df, vehicle_mileage)
             filtered_df = self.appraisal_m(filtered_df)
+            print(filtered_df)
 
             buyers = filtered_df.groupby('Buyer').agg({
                 "Trim Score":"mean",
