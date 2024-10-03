@@ -8,7 +8,7 @@ class BuyerRecommendation:
 
     def __init__(self):
         """ Buyer Recommendation Class """
-        logging.info("--Getting Buyer Recommendation---")
+        print("--Getting Buyer Recommendation---")
 
     ## matrix Trim Score
     def trim_m(self, df :pd.DataFrame ,vehicle_trim : str  )  -> pd.DataFrame:
@@ -117,7 +117,7 @@ class BuyerRecommendation:
 
         except Exception as e:
 
-            logging.error(e)
+            print(e)
             
         try:
             filtered_df = df_sold[
@@ -145,12 +145,12 @@ class BuyerRecommendation:
             buyers['Score'] = buyers['BScore'].apply(lambda x : self.categorize_intensity(x))
             final_leads=self.update_lead_score(buyers,vehicle_source,avg_price_df)
 
-            logging.info(final_leads)
+            print(final_leads)
        
             return final_leads
         except Exception as e:
 
-            logging.error(e)
+            print(e)
             return []
            
 
