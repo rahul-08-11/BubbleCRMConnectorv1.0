@@ -28,7 +28,7 @@ def get_account_id(access_token, unique_identifier, field_name):
         else:
             return None
     else:
-        print(response.json())
+        print(response)
 
 
 ## batch request

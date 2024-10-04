@@ -23,46 +23,55 @@ class BuyerRecommendation:
             vehicle_year = int(vehicle_year)  # Assuming vehicle_year should be an integer
         except ValueError:
             raise ValueError("vehicle_year must be a valid integer.")
+        print(vehicle_year)
 
-        # Ensure 'Year' column is numeric and handle non-numeric values
-        df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+        try:
+            # Optionally drop rows with NaN values in 'Year' column
+            df = df.dropna(subset=['Year'])
 
-        # Optionally drop rows with NaN values in 'Year' column
-        df = df.dropna(subset=['Year'])
-        # Calculate the absolute difference between each year and the input year
-        df['year_diff'] = abs(df['Year'] - vehicle_year)
+            # Ensure 'Year' column is numeric and handle non-numeric values
+            df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
+            print(df['Year'])
+            # Calculate the absolute difference between each year and the input year
+            df['year_diff'] = abs(df['Year'] - vehicle_year)
 
-        # Find the maximum difference to normalize scores
-        max_year_diff = df['year_diff'].max()
+            # Find the maximum difference to normalize scores
+            max_year_diff = df['year_diff'].max()
 
-        # Define the scoring logic based on the absolute year difference
-        def calculate_year_score(year_diff, max_diff):
-            if max_diff == 0:
-                return 10
-            score = 10 - (year_diff / max_diff) * 10
-            # Ensure the score is not negative
-            return max(score, 0)
+            # Define the scoring logic based on the absolute year difference
+            def calculate_year_score(year_diff, max_diff):
+                if max_diff == 0:
+                    return 10
+                score = 10 - (year_diff / max_diff) * 10
+                # Ensure the score is not negative
+                return max(score, 0)
 
-        # Apply the scoring function to calculate YearScore
-        df['Year Score'] = df['year_diff'].apply(calculate_year_score, max_diff=max_year_diff)
+            # Apply the scoring function to calculate YearScore
+            df['Year Score'] = df['year_diff'].apply(calculate_year_score, max_diff=max_year_diff)
 
-        return df
+            return df
+        except Exception as e:
+            print(e)
 
     ## matrix mileage Score
     def mileage_m(self, df : pd.DataFrame, vehicle_mileage : str)->pd.DataFrame:
-        # calculate mileage difference to get deviation
-        df['Mileage_diff'] = abs(df['Mileage'] - vehicle_mileage)
-        # calculate max mileage
-        max_mileage_diff = df['Mileage_diff'].max()
+        try:
+            # calculate mileage difference to get deviation
+            df['Mileage_diff'] = abs(df['Mileage'] - vehicle_mileage)
+            # calculate max mileage
+            max_mileage_diff = df['Mileage_diff'].max()
+            print(f"max mileage is {max_mileage_diff}")
 
-        def calculate_mileage_score(mileage_diff, max_diff):
-            if max_diff == 0:
-                return 10
-            score = 10 - (mileage_diff / max_diff) * 10
-            return max(score, 0)
+            def calculate_mileage_score(mileage_diff, max_diff):
+                if max_diff == 0:
+                    return 10
+                score = 10 - (mileage_diff / max_diff) * 10
+                return max(score, 0)
 
-        df['Mileage Score'] = df['Mileage_diff'].apply(calculate_mileage_score, max_diff=max_mileage_diff)
-        return df
+            df['Mileage Score'] = df['Mileage_diff'].apply(calculate_mileage_score, max_diff=max_mileage_diff)
+            return df
+        except Exception as e:
+            print(e)
 
     
     ## matrix apprasail 

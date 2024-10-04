@@ -120,7 +120,7 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
                 "Make": vehicle.Make,
                 "Model": vehicle.Model,
                 "Year": vehicle.Year,
-                "Trim": vehicle.Trim.replace('"', '\\"').replace("'", "\\'") , ## resolve parsing errors due to single or double quotes
+                "Trim": vehicle.Trim.replace('"', '\\"').replace("'", "\\'") , ## resolve parsing errors due
                 "Mileage": vehicle.Mileage,
                 "Vin":vehicle.VIN,
                 "source":vehicle.Source
