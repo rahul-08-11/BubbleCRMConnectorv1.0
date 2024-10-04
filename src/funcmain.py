@@ -108,6 +108,7 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
             vehicle_response = VehicleApi.add_form_vehicle_into_crm(access_token,bubble_vehicle,main_image_url)
             try:
                 vehicle_id =  vehicle_response['data'][0]['details']['id']
+
                 logging.info(f"Vehicle ID is obtained {vehicle_id}")
 
             except Exception as e:
@@ -119,7 +120,7 @@ async def process_vehicle_and_lead(req : func.HttpRequest,sold_df=None,average_p
                 "Make": vehicle.Make,
                 "Model": vehicle.Model,
                 "Year": vehicle.Year,
-                "Trim": vehicle.Trim,
+                "Trim": vehicle.Trim.replace('"', '\\"').replace("'", "\\'") , ## resolve parsing errors due to single or double quotes
                 "Mileage": vehicle.Mileage,
                 "Vin":vehicle.VIN,
                 "source":vehicle.Source
