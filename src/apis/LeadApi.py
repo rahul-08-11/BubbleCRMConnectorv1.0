@@ -75,7 +75,7 @@ def add_leads(recommendation_df, vehicle_id, token, vehicle_name):
                 recommendation_df.loc[i, "Lead_ID"] = lead_id
 
         else:
-            print(f"Failed to add leads for {vehicle_name}")
+            print(f"Failed to add leads for {response.json()}")
 
     except Exception as e:
         print(f"Error sending request: {e}")
