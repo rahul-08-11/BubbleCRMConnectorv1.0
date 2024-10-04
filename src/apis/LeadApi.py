@@ -73,7 +73,6 @@ def add_leads(recommendation_df, vehicle_id, token, vehicle_name):
             for i, lead in enumerate(data["data"]):
                 lead_id = lead["details"]["id"]
                 recommendation_df.loc[i, "Lead_ID"] = lead_id
-
         else:
             print(f"Failed to add leads for {response.json()}")
 

@@ -23,15 +23,12 @@ class BuyerRecommendation:
             vehicle_year = int(vehicle_year)  # Assuming vehicle_year should be an integer
         except ValueError:
             raise ValueError("vehicle_year must be a valid integer.")
-        print(vehicle_year)
-
         try:
             # Optionally drop rows with NaN values in 'Year' column
             df = df.dropna(subset=['Year'])
 
             # Ensure 'Year' column is numeric and handle non-numeric values
             df['Year'] = pd.to_numeric(df['Year'], errors='coerce')
-            print(df['Year'])
             # Calculate the absolute difference between each year and the input year
             df['year_diff'] = abs(df['Year'] - vehicle_year)
 
@@ -60,8 +57,7 @@ class BuyerRecommendation:
             df['Mileage_diff'] = abs(df['Mileage'] - vehicle_mileage)
             # calculate max mileage
             max_mileage_diff = df['Mileage_diff'].max()
-            print(f"max mileage is {max_mileage_diff}")
-
+        
             def calculate_mileage_score(mileage_diff, max_diff):
                 if max_diff == 0:
                     return 10
@@ -117,7 +113,6 @@ class BuyerRecommendation:
             df_sold['Trim'] = df_sold['Trim'].str.lower().str.strip()
             df_sold['Mileage'] = pd.to_numeric(df_sold['Mileage'].astype(str).str.replace(r'[^\d]', '', regex=True), errors='coerce').fillna(0)
             df_sold['Year'] = pd.to_numeric(df_sold['Year'].astype(str).str.replace(r'[^\d]', '', regex=True), errors='coerce').fillna(0)
-            print(df_sold.dtypes)
             vehicle_make = vehicle_row['Make'].lower().strip()
             vehicle_model = vehicle_row['Model'].lower().strip()
             vehicle_trim = vehicle_row['Trim'].lower().strip()
@@ -134,12 +129,10 @@ class BuyerRecommendation:
                 (df_sold['Model'] == vehicle_model) 
             ]
             filtered_df = self.trim_m(filtered_df, vehicle_trim)
-            print(filtered_df)
             filtered_df = self.year_m(filtered_df, vehicle_year)
             filtered_df = self.mileage_m(filtered_df, vehicle_mileage)
             filtered_df = self.appraisal_m(filtered_df)
-            print(filtered_df)
-
+            
             buyers = filtered_df.groupby('Buyer').agg({
                 "Trim Score":"mean",
                 "Year Score":"mean",
